@@ -700,6 +700,7 @@ const ICONS = {
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
   chevL:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
   chevR:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+  check:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   copy:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8.5" y="8.5" width="12" height="12" rx="2.5"/><path d="M15.5 8.5V6a2.5 2.5 0 00-2.5-2.5H6A2.5 2.5 0 003.5 6v7A2.5 2.5 0 006 15.5h2.5"/></svg>',
   plus:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
   home:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-6.5 8 6.5"/><path d="M6.5 9.5V19h11V9.5"/></svg>',
@@ -1634,6 +1635,49 @@ class CrowCalendarCard extends HTMLElement {
   }
 
   // ── Event sheet ─────────────────────────────────────────────────
+  // A small centred confirmation box with Cancel and a red action, over the sheet
+  _confirm({ title, message = '', confirmLabel = 'Confirm', cancelLabel = 'Cancel', destructive = true, onConfirm, onCancel }) {
+    document.getElementById('cc-confirm-dialog')?.remove();
+    const dark = this._dark;
+    const t = dark
+      ? { bg: 'rgba(40,40,42,0.94)', border: 'rgba(255,255,255,0.12)', divider: 'rgba(255,255,255,0.14)', title: '#fff', msg: 'rgba(255,255,255,0.6)', accent: '#0A84FF', red: '#FF453A' }
+      : { bg: 'rgba(255,255,255,0.97)', border: 'rgba(0,0,0,0.1)', divider: 'rgba(0,0,0,0.12)', title: '#1c1c1e', msg: 'rgba(0,0,0,0.6)', accent: '#007AFF', red: '#FF3B30' };
+    const overlay = document.createElement('div');
+    overlay.id = 'cc-confirm-dialog';
+    overlay.setAttribute('role', 'alertdialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:10060;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,0.35);animation:ccConfirmFade 0.15s ease;';
+    overlay.innerHTML = `
+      <style>
+        @keyframes ccConfirmFade { from{opacity:0} to{opacity:1} }
+        @keyframes ccConfirmPop  { from{transform:translateY(12px) scale(0.96);opacity:0} to{transform:none;opacity:1} }
+        @media (prefers-reduced-motion: reduce) { #cc-confirm-dialog, #cc-confirm-dialog > div { animation:none !important; } }
+      </style>
+      <div style="width:100%;max-width:270px;background:${t.bg};backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-radius:14px;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,0.35);border:1px solid ${t.border};font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',sans-serif;animation:ccConfirmPop 0.2s cubic-bezier(0.34,1.3,0.64,1);">
+        <div style="padding:18px 18px 16px;text-align:center;">
+          <div style="font-size:15px;font-weight:600;color:${t.title};margin-bottom:4px;word-break:break-word;">${esc(title)}</div>
+          ${message ? `<div style="font-size:12.5px;color:${t.msg};line-height:1.4;">${esc(message)}</div>` : ''}
+        </div>
+        <div style="display:flex;border-top:1px solid ${t.divider};">
+          <button type="button" data-c="cancel" style="flex:1;padding:12px;background:none;border:none;border-right:1px solid ${t.divider};color:${t.accent};font-size:14.5px;font-weight:500;cursor:pointer;font-family:inherit;">${esc(cancelLabel)}</button>
+          <button type="button" data-c="ok" style="flex:1;padding:12px;background:none;border:none;color:${destructive ? t.red : t.accent};font-size:14.5px;font-weight:700;cursor:pointer;font-family:inherit;">${esc(confirmLabel)}</button>
+        </div>
+      </div>`;
+    const onKey = ev => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); onCancel?.(); } };
+    const close = () => {
+      document.removeEventListener('keydown', onKey, true);
+      overlay.style.transition = 'opacity 0.15s ease';
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 150);
+    };
+    overlay.querySelector('[data-c="cancel"]').addEventListener('click', () => { close(); onCancel?.(); });
+    overlay.querySelector('[data-c="ok"]').addEventListener('click', () => { close(); onConfirm?.(); });
+    overlay.addEventListener('click', ev => { if (ev.target === overlay) { close(); onCancel?.(); } });
+    document.addEventListener('keydown', onKey, true);   // Escape closes this box, not the sheet behind it
+    document.body.appendChild(overlay);
+    setTimeout(() => overlay.querySelector('[data-c="cancel"]')?.focus({ preventScroll: true }), 50);
+  }
+
   _closePopup() {
     if (!this._popupOverlay) return;
     const ov = this._popupOverlay;
@@ -1748,7 +1792,6 @@ class CrowCalendarCard extends HTMLElement {
       .cc-slot:disabled { cursor:default; }
       .cc-move { margin-top:16px; }
       .cc-del { display:block;width:100%;margin-top:14px;border:none;border-radius:16px;height:48px;background:var(--cc-chip);color:#FF453A;font:inherit;font-size:16px;font-weight:600;cursor:pointer; }
-      .cc-del.is-armed { background:#FF3B30;color:#fff; }
       .cc-rows { display:flex;flex-direction:column;border-radius:18px;overflow:hidden;background:var(--cc-chip); }
       .cc-row { display:flex;align-items:center;gap:14px;width:100%;box-sizing:border-box;padding:14px 16px;background:none;border:none;border-top:1px solid var(--cc-line);color:var(--cc-ink);font:inherit;font-size:17px;font-weight:500;text-align:left;cursor:pointer; }
       .cc-row:first-child { border-top:none; }
@@ -1777,7 +1820,10 @@ class CrowCalendarCard extends HTMLElement {
       .cc-copyrow span { flex:1;min-width:0;display:flex;flex-direction:column; }
       .cc-copyrow small { font-size:12px;color:var(--cc-ink2);font-weight:600; }
       .cc-copyrow b { font-size:16px;font-variant-numeric:tabular-nums;word-break:break-all; }
-      .cc-copybtn { border:none;border-radius:999px;background:var(--cc-chip);color:#0A84FF;font:inherit;font-size:14px;font-weight:600;padding:7px 13px;cursor:pointer;flex-shrink:0; }
+      .cc-copybtn { border:none;background:none;color:#0A84FF;padding:8px;margin:-8px -6px -8px 0;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;border-radius:8px; }
+      .cc-copybtn svg { width:18px;height:18px; }
+      .cc-copybtn.is-done { color:#30D158; }
+      .cc-copybtn:active { opacity:.6; }
       .cc-p-filter { margin-left:auto;border:none;background:none;color:#0A84FF;font:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:2px 0; }
       .cc-p-cal { width:100%; }
       .cc-stats { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px; }
@@ -1937,8 +1983,8 @@ class CrowCalendarCard extends HTMLElement {
         <div class="cc-p-label">Online meeting</div>
         <a class="cc-joingo" href="${esc(mt.url)}" target="_blank" rel="noopener noreferrer">${ICONS.video}Join online meeting</a>
         ${mt.id || mt.pass ? `<div class="cc-rows" style="margin-top:10px">
-          ${mt.id ? `<div class="cc-copyrow"><span><small>${/^\d[\d\s-]*$/.test(mt.id) ? 'Meeting ID' : 'Meeting ID / Username'}</small><b>${esc(mt.id)}</b></span><button type="button" class="cc-copybtn" data-copy="${esc(mt.id.replace(/\s+/g, ''))}">Copy</button></div>` : ''}
-          ${mt.pass ? `<div class="cc-copyrow"><span><small>Passcode</small><b>${esc(mt.pass)}</b></span><button type="button" class="cc-copybtn" data-copy="${esc(mt.pass)}">Copy</button></div>` : ''}
+          ${mt.id ? `<div class="cc-copyrow"><span><small>${/^\d[\d\s-]*$/.test(mt.id) ? 'Meeting ID' : 'Meeting ID / Username'}</small><b>${esc(mt.id)}</b></span><button type="button" class="cc-copybtn" data-copy="${esc(mt.id.replace(/\s+/g, ''))}" aria-label="Copy meeting ID" title="Copy">${ICONS.copy}</button></div>` : ''}
+          ${mt.pass ? `<div class="cc-copyrow"><span><small>Passcode</small><b>${esc(mt.pass)}</b></span><button type="button" class="cc-copybtn" data-copy="${esc(mt.pass)}" aria-label="Copy passcode" title="Copy">${ICONS.copy}</button></div>` : ''}
         </div>` : ''}</div>` : ''}
       ${loc ? `<div class="cc-p-sec"><div class="cc-p-label">Location</div><div class="cc-p-box cc-links">${linkify(loc)}</div></div>` : ''}
       ${notesShown ? `<div class="cc-p-sec"><div class="cc-p-label">Notes</div><div class="cc-p-box cc-links">${linkify(notesShown)}</div></div>` : ''}
@@ -2092,16 +2138,23 @@ class CrowCalendarCard extends HTMLElement {
   }
 
   _copy(text, btn) {
-    const done = ok => { if (!btn) return; const t = btn.textContent; btn.textContent = ok ? 'Copied' : 'Couldn’t copy'; setTimeout(() => { if (btn.isConnected) btn.textContent = t; }, 1400); };
-    if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(() => done(true), () => fallback()); return; }
+    const done = ok => {
+      if (!btn) return;
+      const was = btn.innerHTML;
+      btn.innerHTML = ok ? ICONS.check : ICONS.copy;
+      btn.classList.toggle('is-done', ok);
+      setTimeout(() => { if (btn.isConnected) { btn.innerHTML = was; btn.classList.remove('is-done'); } }, 1200);
+    };
     const fallback = () => {
       try {
         const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0;';
         document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); done(ok);
       } catch (_) { done(false); }
     };
-    fallback();
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => done(true), fallback);
+    else fallback();
   }
+
 
   // ── Search ──────────────────────────────────────────────────────
   _openSearchSheet() {
@@ -3610,15 +3663,7 @@ Sum up the week ahead in up to four short lines, each starting with "\u2022 ": t
 
     const del = $('f_del');
     if (del) {
-      let armed = false;
-      del.addEventListener('click', async () => {
-        if (!armed) {
-          armed = true;
-          del.textContent = recurring && range === 'THISANDFUTURE' ? 'Tap again to delete this and all future events' : 'Tap again to delete';
-          del.classList.add('is-armed');
-          setTimeout(() => { if (del.isConnected && armed) { armed = false; del.textContent = 'Delete event'; del.classList.remove('is-armed'); } }, 4000);
-          return;
-        }
+      const doDelete = async () => {
         const msg = { type: 'calendar/event/delete', entity_id: e.cal.entity, uid: e.uid };
         if (e.recurrence_id) msg.recurrence_id = e.recurrence_id;
         if (recurring && range) msg.recurrence_range = range;
@@ -3632,6 +3677,17 @@ Sum up the week ahead in up to four short lines, each starting with "\u2022 ": t
         this._daySum = null;
         this._scheduleFetch(400);
         this._closePopup();
+      };
+      del.addEventListener('click', () => {
+        const future = recurring && range === 'THISANDFUTURE';
+        this._confirm({
+          title: future ? 'Delete this and all future events?' : `Delete “${e.title}”?`,
+          message: future ? 'This event and every later one in the series will be removed. This can’t be undone.'
+            : recurring ? 'Only this one event is removed. The rest of the series stays. This can’t be undone.'
+            : 'This can’t be undone.',
+          confirmLabel: 'Delete',
+          onConfirm: doDelete,
+        });
       });
     }
   }
