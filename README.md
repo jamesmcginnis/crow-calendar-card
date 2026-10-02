@@ -1,6 +1,6 @@
 # 📅 Crow Calendar Card
 
-A calendar card for [Home Assistant](https://www.home-assistant.io/) that brings all your calendars together in one place. Each calendar has its own colour, and you can view them as an Agenda list, Day Columns or a Month grid. Events show countdowns, a live progress bar while they're on, clash badges when they overlap, and join buttons for online meetings. Tap an event to see its details, edit it, or delete it. You can add new events, search, and export to PDF, a calendar file, a spreadsheet or JSON. Choose the Classic solid look or a liquid-glass look in light or dark. Optional AI features add a summary of your day, questions about your calendars, typed quick-add, spoken rundowns and tips for each event. Everything can be set up without writing any YAML.
+A calendar card for [Home Assistant](https://www.home-assistant.io/) that brings all your calendars together in one place. Each calendar has its own colour, and you can view them as an Agenda list, Day Columns, or a Month view as a grid or as a big date and mini month over an agenda. Events show countdowns, a live progress bar while they're on, clash badges when they overlap, and join buttons for online meetings. Tap an event to see its details, edit it, delete it, send it to phones or announce it on your speakers. You can add new events, search, see countdowns and clashes, and export to PDF, a calendar file, a spreadsheet or JSON. Choose the Classic solid look or a liquid-glass look in light or dark. Optional AI features add a summary of your day, questions about your calendars, typed quick-add, spoken rundowns and tips for each event. Everything can be set up without writing any YAML.
 
 > ✨ **AI features are optional.** Nothing AI-powered runs until you turn on AI features and choose a conversation agent in the editor (see [AI Features Setup](#-ai-features-setup-optional) below). Without an agent, the card works fully as a calendar card, and **Plain answers** gives you most of the same tools worked out from your calendar alone.
 
@@ -11,8 +11,10 @@ A calendar card for [Home Assistant](https://www.home-assistant.io/) that brings
 ### Views
 - **Agenda**: a list, day by day, with the date down the side and today in a coloured circle.
 - **Day Columns**: a column for each day, side by side, which you can scroll sideways.
-- **Month**: a calendar grid with coloured dots under busy days. Tap a day to see its events, and use ‹ › and **Today** to move between months.
-- **Look ahead** from 1 to 28 days, with optional week labels, quiet days and today's earlier events.
+- **Month**, in one of two styles:
+  - **Grid**: a calendar grid with coloured dots under busy days. Tap a day to see its events, and use ‹ › and **Today** to move between months.
+  - **Agenda**: a big date beside a smaller month, with the coming days listed underneath. The current week is highlighted, days with events are tinted in your Today colour, and tapping a day starts the list from that day. Each day has a full-width header with the forecast high and low, and a floating **+** adds an event. The big date can be turned off for a compact grid and list. On narrow cards the big date moves above the grid.
+- **Look ahead** from 1 to 28 days (Agenda, Day Columns and the Month view's Agenda style), with optional week labels, quiet days and today's earlier events.
 - **‹ › buttons** to look at the days before or after, with **Today** to come back (Agenda and Day Columns).
 - **Search box** (optional) under the header: type to find events from the last month to six months ahead, shown right on the card.
 
@@ -34,6 +36,9 @@ Tap an event to open its details, or set it to open a link instead, such as the 
 - **Show only this calendar**, which filters the card to that calendar until you clear it.
 - **Edit** to change the title, place, times, meeting details and notes, or delete the event. Repeating events can be changed for one event or all future events.
 - **Duplicate** copies the event into a New Event form, ready to change the date and save.
+- **Send** sends a message about the event to phones with the Home Assistant app. Pick the phones (with a search box), check the message, and send. If the event has an online meeting, tapping the notification opens it.
+- **Announce** reads the event out on the speakers you tick, grouped by room, with a search box when you have lots of them. You can edit what will be read first. Works without AI.
+- With AI on, **Write it for me** writes the message or announcement for you. What it writes is kept for that event, so it's still there when you come back.
 
 ### Adding events
 - The **+** button opens a **New Event** form for any of your calendars that accept new events.
@@ -43,25 +48,28 @@ Tap an event to open its details, or set it to open a link instead, such as the 
 Tap **•••** in the header, or press and hold the card:
 - **Search** finds any event by its name, place or notes, from the last month to six months ahead.
 - **Week ahead** shows the next 7 days at a glance: how many events, hours booked, the busiest and quietest days, time booked per calendar and any clashes.
+- **Countdowns** shows how many days to go until the big things coming up: all-day and multi-day events in the next six months, such as birthdays, holidays and trips. The next one is shown large, with the rest listed below. Repeating events show once.
+- **Clashes** lists every pair of overlapping events in the next two or four weeks, grouped by day. Tap one for ways to sort it out.
 - **Find a free slot** lists your free times this week or next, between 8:00 and 21:00, for 30 minutes to 3 hours. Tap one to add an event there.
 - **Export** saves or shares the days on the card, or the next 30 or 90 days, as:
   - a **PDF** agenda, with a preview first
   - a **calendar file (.ics)** that opens in any calendar app
   - a **spreadsheet (.csv)** for Excel or Numbers
   - **data (.json)** for backups or other tools
+- **Send** sends a rundown of today or tomorrow as a message to phones. With AI on, the message is written for you; without it, it's worked out from your calendar.
 
 ### Forecast
-- A weather icon and the day's high temperature under each date in the Agenda and Day Columns views, from any Home Assistant weather entity.
+- A weather icon and the day's high temperature under each date in the Agenda and Day Columns views, and the high and low beside each day in the Month view's Agenda style, from any Home Assistant weather entity.
 
 ### Appearance
 - **Style**:
-  - **Classic** is a plain solid card.
+  - **Classic** is a plain solid card, with flat event panels and no glass sheen.
   - **Glass** is a frosted, see-through surface with blur and soft highlights.
 - **Event panels**: show each event in its own rounded panel, or turn them off for a simpler list with just the colour bar.
 - **Theme**: Auto (follows Home Assistant), Light or Dark.
 - **Glass** slider, from clear to frosted.
 - **Text size**: Standard, or Larger for wall tablets.
-- **Height**: grow to fit your events, or fill its spot on the dashboard and scroll inside.
+- **Height**: grow to fit your events, or fill its spot on the dashboard and scroll inside. The Month view's Grid style always grows to fit.
 - **Colour scheme** presets, or your own colours for today's date, the Now badge and weekends.
 - Respects **Reduce Motion** on your device.
 
@@ -71,11 +79,11 @@ You need a Home Assistant conversation agent for these:
 - **Ask**: ask a question about your calendars, such as "When am I free this week?", or tap a suggestion. It understands the people in your Home Assistant, so "What has Alex got this week?" lists just their events, and each person gets a suggestion of their own.
 - **Week summary**: a short written summary at the bottom of Week ahead.
 - **Quick add**: type something like "Dentist next Tuesday at 3", or paste a whole booking email or invitation. The title, time, place, reference numbers and online meeting details are filled in for you. You check it before it's saved, or open it in the full form first.
-- **Announce**: a spoken rundown of today or tomorrow, played on the speakers you tick. Speakers are grouped by area, and unavailable speakers and TVs are hidden. It uses Home Assistant's text-to-speech and also works with Music Assistant speakers.
-- **About this event**: a button in an upcoming event's details, with tips on what to bring or prepare and a warning if the time around it is tight.
+- **Announce** (in the ••• menu): a spoken rundown of today or tomorrow, played on the speakers you tick. Speakers are grouped by area, and unavailable speakers and TVs are hidden. It uses Home Assistant's text-to-speech and also works with Music Assistant speakers.
+- **About this event**: a button in an upcoming event's details, with tips on what to bring or prepare and a warning if the time around it is tight. The tips are kept, so they're still showing when you come back to the event, and they're turned into a ready-made message for Send and Announce.
 - **Fix a clash**: tap a Clash badge for ideas on sorting it out, and a suggested new time that's checked to be free. Tap **Move it** to move the event there.
 
-Each feature has its own toggle in the editor. Your calendar events are only sent to the agent when you use a feature, apart from Your day, which updates at most once an hour while it's on. Event text is treated as data, never as instructions, and everything is escaped before it's shown.
+Each feature has its own toggle in the editor. Your calendar events are only sent to the agent when you use a feature, apart from Your day, which updates at most once an hour while it's on. Answers are kept on your device for up to a day and shared by every Crow Calendar card on the page, so reloading the dashboard doesn't ask the agent again. Event text is treated as data, never as instructions, and everything is escaped before it's shown.
 
 If the AI can't answer, every feature shows a plain answer worked out from your calendar instead, with a **Try again** button.
 
@@ -142,7 +150,9 @@ Everything else can be set in the built-in visual editor, and every option below
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `layout` | `list` \| `column` \| `month` | `list` | Agenda, Day Columns or Month |
-| `days_to_show` | `1–28` | `3` | How many days ahead to show, starting today (Agenda and Day Columns) |
+| `month_style` | `grid` \| `agenda` | `grid` | Month view style: Grid, or a big date and mini month over an agenda |
+| `show_big_date` | `boolean` | `true` | The big date beside the grid (Month view, Agenda style) |
+| `days_to_show` | `1–28` | `3` | How many days ahead to show (Agenda, Day Columns and the Month view's Agenda style) |
 | `first_day_of_week` | `auto` \| `monday` \| `sunday` | `auto` | First day of the week |
 | `show_week_numbers` | `boolean` | `false` | Week labels |
 
@@ -152,22 +162,7 @@ Everything else can be set in the built-in visual editor, and every option below
 |---|---|---|---|
 | `show_past_events` | `boolean` | `false` | Keep today's finished events, shown faded |
 | `show_empty_days` | `boolean` | `false` | Show days with no events |
-| `max_events` | `number` | `0` | Show only this many events, with a "more events" button (`0` = no limit, Agenda only) |
-
-### Header & menu
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `show_title` | `boolean` | `true` | The header |
-| `title` | `string` | — | Card name (leave empty to use today's date) |
-| `show_date` | `boolean` | `true` | Today's date in the header |
-| `show_add_button` | `boolean` | `true` | The + button for new events |
-| `show_search_bar` | `boolean` | `false` | Search box under the header |
-| `show_search` | `boolean` | `true` | Search in the ••• menu |
-| `show_week_ahead` | `boolean` | `true` | Week ahead in the ••• menu |
-| `show_export` | `boolean` | `true` | Export in the ••• menu |
-| `show_free_slots` | `boolean` | `true` | Find a free slot in the ••• menu |
-| `show_nav` | `boolean` | `true` | ‹ › buttons to see earlier and later days |
+| `max_events` | `number` | `0` | Show only this many events, with a "more events" button (`0` = no limit; Agenda and the Month view's Agenda style) |
 
 ### On each event
 
@@ -192,12 +187,27 @@ Everything else can be set in the built-in visual editor, and every option below
 | `show_directions` | `boolean` | `true` | Directions button in event details |
 | `show_duplicate` | `boolean` | `true` | Duplicate button in event details |
 
-### Forecast
+### Header
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `show_weather` | `boolean` | `true` | Show the forecast under each date |
-| `weather_entity` | `string` | — | The weather entity the forecast comes from |
+| `show_title` | `boolean` | `true` | The header (not used by the Month view's Agenda style) |
+| `title` | `string` | — | Card name (leave empty to use today's date) |
+| `show_date` | `boolean` | `true` | Today's date in the header |
+| `show_nav` | `boolean` | `true` | ‹ › buttons to see earlier and later days |
+| `show_add_button` | `boolean` | `true` | The + button for new events |
+| `show_search_bar` | `boolean` | `false` | Search box under the header |
+
+### ••• Menu
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `show_search` | `boolean` | `true` | Search |
+| `show_week_ahead` | `boolean` | `true` | Week ahead |
+| `show_countdowns` | `boolean` | `true` | Countdowns |
+| `show_clash_list` | `boolean` | `true` | Clashes |
+| `show_free_slots` | `boolean` | `true` | Find a free slot |
+| `show_export` | `boolean` | `true` | Export |
 
 ### Appearance
 
@@ -208,11 +218,25 @@ Everything else can be set in the built-in visual editor, and every option below
 | `appearance` | `auto` \| `light` \| `dark` | `auto` | Theme |
 | `glass` | `0–100` | `50` | Glass transparency, from clear to frosted |
 | `size` | `compact` \| `regular` | `compact` | Text size: Standard or Larger |
-| `height_mode` | `fit` \| `fill` | `fit` | Grow to fit, or fill the card's spot on the dashboard |
+| `height_mode` | `fit` \| `fill` | `fit` | Grow to fit, or fill the card's spot on the dashboard (the Month view's Grid style always grows to fit) |
 | `max_height` | `number` | `0` | Height limit in px before scrolling (`0` = no limit) |
 | `accent_color` | `string` | `#FF3B30` | Today's date |
 | `progress_color` | `string` | `#0A84FF` | The Now badge and progress bar |
 | `weekend_color` | `string` | `#8E8E93` | Saturday and Sunday |
+
+### Forecast
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `show_weather` | `boolean` | `true` | Show the forecast under each date |
+| `weather_entity` | `string` | — | The weather entity the forecast comes from |
+
+### Send & Announce
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `show_send_message` | `boolean` | `true` | Send in event details and in the ••• menu (needs phones with the Home Assistant app) |
+| `tts_entity` | `string` | auto | The text-to-speech service used by Announce. Leave empty to use the first one Home Assistant has |
 
 ### AI features
 
@@ -235,8 +259,9 @@ entities:
     color: '#FF9F0A'
     label: Work
     blocklist: cancelled
-layout: list
-days_to_show: 7
+layout: month
+month_style: agenda
+days_to_show: 5
 title: Family
 filter_duplicates: true
 weather_entity: weather.home
@@ -258,9 +283,12 @@ ai_conversation_agent: conversation.google_ai_conversation
 | **Tap a Clash badge** | Shows the two events and how they overlap |
 | **Tap Join** | Opens the online meeting |
 | **Tap +** | New event |
-| **Tap ••• or press and hold the card** | Search, Week ahead, Export and the AI tools |
+| **Tap ••• or press and hold the card** | Search, Week ahead, Countdowns, Clashes, Find a free slot, Export, Send and the AI tools |
+| **Tap Send** (event details) | Send a message about the event to phones |
+| **Tap Announce** (event details) | Read the event out on your speakers |
 | **Tap "12 more events"** | Shows the rest of the events |
-| **Tap a day** (Month) | Shows that day's events |
+| **Tap a day** (Month, Grid) | Shows that day's events |
+| **Tap a day** (Month, Agenda) | Starts the list underneath from that day |
 | **Tap ‹ › or Today** (Month) | Moves between months |
 | **Tap ‹ › or Today** (Agenda, Day Columns) | Shows earlier or later days |
 | **Tap Duplicate** (event details) | Copies the event into a New Event form |
@@ -300,7 +328,7 @@ In the card's visual editor, open **AI Features**, turn on **Enable AI features*
 
 ### Rate limits
 
-Free-tier limits vary by model and change over time, so check Google AI Studio for your current quota. The card caches every answer: Your day updates at most once an hour, and everything else only runs when you open it. You're unlikely to reach the limit in normal use. If you do see a quota message, it resets the next day.
+Free-tier limits vary by model and change over time, so check Google AI Studio for your current quota. The card caches every answer on your device for up to a day, shared by every Crow Calendar card on the page: Your day updates at most once an hour, everything else only runs when you open it, and About this event tips and written messages are kept for each event. You're unlikely to reach the limit in normal use. If you do see a quota message, it resets the next day.
 
 If the agent can't answer, the card retries once automatically, then shows a plain answer worked out from your calendar, the reason in plain English and a **Try again** button.
 
@@ -313,8 +341,10 @@ If the agent can't answer, the card retries once automatically, then shows a pla
 - **The forecast** comes from your Home Assistant weather entity.
 - **Location suggestions** come from your Home Assistant zones and the places in your own events. Nothing is looked up online.
 - **Directions** open the address in Apple Maps.
-- **PDF export** loads the jsPDF library from cdnjs.cloudflare.com the first time you make a PDF. The other export formats are made on your device.
--e 
+- **Send** uses the Home Assistant app's notifications (`notify.mobile_app_…`), so it reaches phones and tablets signed in to the app.
+- **Announce** uses your Home Assistant text-to-speech service and plays on your media players. Music Assistant speakers are supported.
+- **Kept on your device**: AI answers (for up to a day), and each event's About this event tips and written messages (for up to a week after the event). They're stored in your browser, not sent anywhere.
+- **PDF export** loads the jsPDF library from cdnjs.cloudflare.com the first time you make a PDF. The other export formats are made on your device. Each PDF page notes when it was created.
 ---
 
 ## 📄 License
