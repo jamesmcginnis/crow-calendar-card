@@ -1044,7 +1044,7 @@ class CrowCalendarCard extends HTMLElement {
       show_location: true, show_description: false,
       show_countdown: true, show_progress: true,
       weather_entity: '', show_weather: true, event_tap: 'popup', tap_url: '', max_height: 0, height_mode: 'fit', refresh_interval: 30,
-      show_add_button: true, show_search: true, show_export: true, show_join: true, card_style: 'glass', event_panels: true,
+      show_add_button: true, show_search: true, show_export: true, show_join: true, show_join_button: true, card_style: 'glass', event_panels: true,
       appearance: 'auto', glass: 50, size: 'compact',
       month_style: 'grid', show_big_date: true,
       show_send_message: true, tts_entity: '',
@@ -1101,6 +1101,7 @@ class CrowCalendarCard extends HTMLElement {
   }
 
   disconnectedCallback() {
+    this._closeMenu();
     this._stopTicker();
     this._unsubWeather();
     this._wxEntity = null;
@@ -1371,7 +1372,15 @@ class CrowCalendarCard extends HTMLElement {
     this._ticker = setInterval(() => {
       if (!this._hass || !this._config) return;
       const k = dayKey(new Date());
-      if (k !== this._dayKey) { this._dayKey = k; this._fetchKey = null; }
+      if (k !== this._dayKey) {
+        const prev = this._dayKey;
+        this._dayKey = k; this._fetchKey = null;
+        if (prev && this._mSel === prev) this._mSel = null;
+        const was = prev && localDate(prev), now = new Date();
+        if (was && this._mCursor && this._mCursor.y === was.getFullYear() && this._mCursor.m === was.getMonth() && !this._mSel) {
+          this._mCursor = { y: now.getFullYear(), m: now.getMonth() };
+        }
+      }
       this._maybeFetch();
       this._render();
     }, 30000);
@@ -1492,7 +1501,8 @@ class CrowCalendarCard extends HTMLElement {
 
     const err = this._failed.length
       ? `<div class="cc-err">Couldn’t load ${esc(this._failed.join(', '))}. It will try again at the next refresh.</div>` : '';
-    const daySum = this._sumUsed || mAgenda ? '' : this._sumHtml;   // the list puts it in today's row
+    // the note belongs to today: the list puts it in today's row, and the Month view only shows it with today
+    const daySum = this._sumUsed || layout === 'month' ? '' : this._sumHtml;
     const nav = layout !== 'month' && cals.length && cfg.show_nav !== false ? this._dayNavHtml() : '';
     // the search box sits between the header and the rest, and is never redrawn
     const sbOn = cfg.show_search_bar === true && cals.length > 0;
@@ -1573,7 +1583,7 @@ class CrowCalendarCard extends HTMLElement {
     const cfg = this._config;
     const add = cfg.show_add_button !== false && this._addableCals().length
       ? `<button type="button" class="cc-aibtn" data-ai="add" aria-label="New event" title="New event">${ICONS.plus}</button>` : '';
-    const menu = this._menuItems().length
+    const menu = this._hasMenu()
       ? `<button type="button" class="cc-aibtn" data-ai="menu" aria-label="More" title="More">${AI_ICONS.more}</button>` : '';
     const ai = add + menu;
     if (cfg.show_title === false) return ai ? `<div class="cc-head is-bare">${ai}</div>` : '';
@@ -1684,7 +1694,7 @@ class CrowCalendarCard extends HTMLElement {
 
     const clash = this._clashesFor(e).length
       ? `<button type="button" class="cc-clash" data-clash="${idx}" aria-label="Clash — tap for details">${AI_ICONS.warn}${compact ? '' : 'Clash'}</button>` : '';
-    const mt = !compact && st.kind !== 'past' ? this._meeting(e) : null;
+    const mt = !compact && st.kind !== 'past' && cfg.show_join_button !== false ? this._meeting(e) : null;
     const join = mt ? `<a class="cc-join" data-join="1" href="${esc(mt.url)}" target="_blank" rel="noopener noreferrer" aria-label="Join online meeting">${ICONS.video}Join</a>` : '';
     const badges = clash || badge || join ? `<span class="cc-badges">${join}${clash}${badge}</span>` : '';
 
@@ -1736,9 +1746,11 @@ class CrowCalendarCard extends HTMLElement {
     if (this._lpFired) { this._lpFired = false; return; }   // the tail of a long-press
     const path = ev.composedPath ? ev.composedPath() : [];
     if (path.find(n => n?.dataset?.join)) return;   // the Join link opens by itself
-    if (path.find(n => n?.dataset?.ai === 'menu')) { this._openActionsSheet(); return; }
+    const menuBtn = path.find(n => n?.dataset?.ai === 'menu');
+    if (menuBtn) { this._openActionsSheet(menuBtn.getBoundingClientRect()); return; }
     if (path.find(n => n?.dataset?.ai === 'add')) { this._openNewEvent(); return; }
-    if (path.find(n => n?.dataset?.filter)) { this._setFilter(null); return; }
+    const flt = path.find(n => n?.dataset?.filter);
+    if (flt) { if (flt.dataset.filter === 'all') this._showAllCals(); else this._setFilter(null); return; }
     const dnav = path.find(n => n?.dataset?.dnav);
     if (dnav) {
       this._offset = dnav.dataset.dnav === 'today' ? 0 : (this._offset || 0) + parseInt(dnav.dataset.dnav, 10) * this._days();
@@ -1754,11 +1766,11 @@ class CrowCalendarCard extends HTMLElement {
       this._mSel = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() ? dayKey(now) : dayKey(d);
       this._render(); return;
     }
-    if (path.find(n => n?.dataset?.mtoday)) { const now = new Date(); this._mCursor = { y: now.getFullYear(), m: now.getMonth() }; this._mSel = dayKey(now); this._render(); return; }
+    if (path.find(n => n?.dataset?.mtoday)) { const now = new Date(); this._mCursor = { y: now.getFullYear(), m: now.getMonth() }; this._mSel = null; this._render(); return; }
     const mday = path.find(n => n?.dataset?.mday);
     if (mday) {
       const d = localDate(mday.dataset.mday);
-      this._mSel = mday.dataset.mday;
+      this._mSel = mday.dataset.mday === dayKey(new Date()) ? null : mday.dataset.mday;   // today follows today
       if (d.getMonth() !== this._mCursor.m) this._mCursor = { y: d.getFullYear(), m: d.getMonth() };
       this._render(); return;
     }
@@ -2248,14 +2260,20 @@ class CrowCalendarCard extends HTMLElement {
       if (e.button) return;
       this._lpFired = false;
       if ((e.composedPath ? e.composedPath() : []).some(n => n?.id === 'cc-search')) return;
-      if (!this._menuItems().length) return;
+      if (!this._hasMenu()) return;
       sx = e.clientX; sy = e.clientY;
       clear();
-      timer = setTimeout(() => { timer = null; this._lpFired = true; this._openActionsSheet(); }, 500);
+      timer = setTimeout(() => {
+        timer = null; this._lpFired = true;
+        // drop down from the ••• button when there is one, otherwise from where the card was pressed
+        const btn = this.shadowRoot?.querySelector('[data-ai="menu"]');
+        const r = btn && btn.getBoundingClientRect();
+        this._openActionsSheet(r && r.width ? r : { left: sx, right: sx, top: sy, bottom: sy, width: 0, height: 0 });
+      }, 500);
     });
     el.addEventListener('pointermove', e => { if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > 10) clear(); });
     ['pointerup', 'pointerleave', 'pointercancel'].forEach(t => el.addEventListener(t, clear));
-    el.addEventListener('contextmenu', e => { if (this._menuItems().length) e.preventDefault(); });
+    el.addEventListener('contextmenu', e => { if (this._hasMenu()) e.preventDefault(); });
   }
 
   // ═════════════════════════════════════════════════════════════════
@@ -2287,11 +2305,61 @@ class CrowCalendarCard extends HTMLElement {
   }
   _filtered(events) {
     const f = this._filterCal;
-    return f ? events.filter(e => e.cal.entity === f) : events;
+    const hidden = this._hiddenCals();
+    return events.filter(e => (!f || e.cal.entity === f) && !hidden.has(e.cal.entity));
   }
+
+  // ── Calendars shown or hidden from the ••• menu (kept on this device, per card) ──
+  _hiddenKey() { return `crow-calendar-hidden|${this._hash(this._cals().map(c => c.entity).join(','))}`; }
+  _hiddenCals() {
+    const key = this._hiddenKey();
+    if (this._hiddenSet?.key !== key) {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(key) || '[]'); } catch (_) { list = []; }
+      const known = new Set(this._cals().map(c => c.entity));
+      this._hiddenSet = { key, set: new Set((Array.isArray(list) ? list : []).filter(x => known.has(x))) };
+    }
+    return this._hiddenSet.set;
+  }
+  _saveHidden() {
+    try {
+      const set = this._hiddenCals();
+      if (set.size) localStorage.setItem(this._hiddenKey(), JSON.stringify([...set]));
+      else localStorage.removeItem(this._hiddenKey());
+    } catch (_) { /* this visit only */ }
+  }
+  _calShown(entity) { return (!this._filterCal || this._filterCal === entity) && !this._hiddenCals().has(entity); }
+  // Show or hide one calendar; the last one showing can't be hidden
+  _toggleCal(entity) {
+    const cals = this._cals();
+    const hidden = this._hiddenCals();
+    if (this._filterCal) {   // "Only this calendar" becomes the same thing as ticks
+      cals.forEach(c => { if (c.entity !== this._filterCal) hidden.add(c.entity); });
+      this._filterCal = null;
+    }
+    if (hidden.has(entity)) hidden.delete(entity);
+    else if (cals.filter(c => !hidden.has(c.entity)).length > 1) hidden.add(entity);
+    this._saveHidden();
+    this._expanded = false;
+    this._mData = null;      // month dots follow too
+    this._render();
+  }
+  _showAllCals() {
+    this._hiddenCals().clear();
+    this._saveHidden();
+    this._filterCal = null;
+    this._expanded = false;
+    this._mData = null;
+    this._render();
+  }
+
   _filterHtml() {
     const f = this._filterCal;
-    if (!f) return '';
+    if (!f) {
+      const n = this._hiddenCals().size;
+      return n ? `<button type="button" class="cc-filter" data-filter="all" aria-label="Show all calendars">
+      <span>${n} calendar${n === 1 ? '' : 's'} hidden</span><b>${CLOSE_SVG}</b></button>` : '';
+    }
     const c = this._cals().find(x => x.entity === f);
     if (!c) { this._filterCal = null; return ''; }
     const p = tuneColor(c.color, this._dark);
@@ -2488,7 +2556,7 @@ class CrowCalendarCard extends HTMLElement {
       <div class="cc-mhead">
         <button type="button" class="cc-mnav" data-mnav="-1" aria-label="Previous month">${ICONS.chevL}</button>
         <span class="cc-mtitle">${esc(this._fmt(first, { month: 'long', year: 'numeric' }))}</span>
-        ${isCurMonth ? '' : '<button type="button" class="cc-mtoday" data-mtoday="1">Today</button>'}
+        ${isCurMonth && day.isToday ? '' : '<button type="button" class="cc-mtoday" data-mtoday="1">Today</button>'}
         <button type="button" class="cc-mnav" data-mnav="1" aria-label="Next month">${ICONS.chevR}</button>
       </div>
       <div class="cc-mgrid">${wdNames.map(n => `<span class="cc-mwd">${esc(n)}</span>`).join('')}${cells}</div>
@@ -2520,7 +2588,7 @@ class CrowCalendarCard extends HTMLElement {
     // mini month
     const isCurMonth = g.cur.y === now.getFullYear() && g.cur.m === now.getMonth();
     const todayBtn = !isCurMonth || selKey !== todayKey ? '<button type="button" class="cc-mtoday" data-mtoday="1">Today</button>' : '';
-    const menu = this._menuItems().length
+    const menu = this._hasMenu()
       ? `<button type="button" class="cc-aibtn" data-ai="menu" aria-label="More" title="More">${AI_ICONS.more}</button>` : '';
     const mo = this._fmt(g.first, { month: 'short' }).replace(/\.$/, '');
     const wd = Array.from({ length: 7 }, (_, i) =>
@@ -3598,35 +3666,155 @@ In one short sentence (two at most), sum up the rest of today: what is still ahe
   }
 
   // ── Long-press / ••• button: the AI actions sheet ─────────────────
-  _openActionsSheet() {
+  // The ••• menu: a drop-down that opens from the ••• button (or where the card was pressed)
+  _openActionsSheet(anchor) {
     const feats = this._menuItems();
-    if (!feats.length) return;
-    const popup = this._createPopupBase(this._config.title || 'Calendar');
-    if (!popup) return;
+    if ((!feats.length && this._cals().length < 2) || this._popupOverlay) return;
+    this._closeMenu();
     const defs = {
-      search:   [ICONS.search,      'Search',     'Find an event by title, place or notes'],
-      week:     [AI_ICONS.chart,    'Week ahead', 'The next 7 days at a glance, with stats'],
-      free:     [ICONS.clock,       'Find a free slot', 'Free times this week or next, ready to book'],
-      countdown: [ICONS.hourglass,  'Countdowns', 'Days to go until the big things coming up'],
-      clashes:  [AI_ICONS.warn,     'Clashes',    'Events that overlap in the weeks ahead'],
-      export:   [ICONS.doc,         'Export',     'PDF, calendar file, spreadsheet or data'],
-      ask:      [AI_ICONS.chat,     'Ask',        'Ask about your calendars'],
-      add:      [AI_ICONS.plus,     'Quick add',  'Add an event by typing it'],
-      announce: [AI_ICONS.speaker,  'Announce',   'A spoken rundown on your speakers'],
-      send:     [ICONS.phone,       'Send',       'Today or tomorrow as a message to phones'],
+      search:    [ICONS.search,     'Search'],
+      week:      [AI_ICONS.chart,   'Week ahead'],
+      free:      [ICONS.clock,      'Find a free slot'],
+      countdown: [ICONS.hourglass,  'Countdowns'],
+      clashes:   [AI_ICONS.warn,    'Clashes'],
+      export:    [ICONS.doc,        'Export'],
+      ask:       [AI_ICONS.chat,    'Ask'],
+      add:       [AI_ICONS.plus,    'Quick add'],
+      announce:  [AI_ICONS.speaker, 'Announce'],
+      send:      [ICONS.phone,      'Send'],
     };
     const open = { search: () => this._openSearchSheet(), week: () => this._openWeekSheet(), free: () => this._openFreeSlotsSheet(), countdown: () => this._openCountdownSheet(), clashes: () => this._openClashListSheet(), export: () => this._openExportSheet(), ask: () => this._openAskSheet(), add: () => this._openAddSheet(), announce: () => this._openAnnounceSheet(), send: () => this._openSendDaySheet() };
-    const list = document.createElement('div');
-    list.className = 'cc-rows';
+
+    // a clear layer that closes the menu when anything outside it is tapped
+    const layer = document.createElement('div');
+    layer.className = 'cc-menu-layer';
+    layer.style.cssText = `${this._popupVars()}position:fixed;inset:0;z-index:9999;`;
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes ccMenuIn { from{opacity:0;transform:scale(0.92)} to{opacity:1;transform:none} }
+      @media (prefers-reduced-motion: reduce) { .cc-menu { animation:none !important; } }
+      .cc-menu {
+        position:fixed; box-sizing:border-box; width:min(280px, calc(100vw - 24px)); overflow-y:auto; overscroll-behavior:contain;
+        background:var(--cc-sheet); border:1px solid var(--cc-sheet-edge); border-radius:22px;
+        box-shadow:0 18px 48px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.08);
+        -webkit-backdrop-filter:blur(40px) saturate(180%); backdrop-filter:blur(40px) saturate(180%);
+        font-family:ui-rounded,'SF Pro Rounded',-apple-system,BlinkMacSystemFont,system-ui,'Segoe UI',sans-serif;
+        color:var(--cc-ink); padding:4px 0; animation:ccMenuIn 0.18s cubic-bezier(0.32,1.1,0.5,1);
+      }
+      .cc-mi {
+        display:flex; align-items:center; gap:16px; width:100%; min-height:50px; box-sizing:border-box;
+        padding:0 20px; border:none; background:none; color:inherit; cursor:pointer; text-align:left;
+        font-family:inherit; font-size:17px; font-weight:500; -webkit-tap-highlight-color:transparent;
+      }
+      .cc-mi + .cc-mi { border-top:1px solid var(--cc-line); }
+      .cc-mi svg { width:20px; height:20px; flex-shrink:0; color:var(--cc-ink2); }
+      .cc-mi span { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+      .cc-mi:hover, .cc-mi:focus-visible { background:var(--cc-chip); outline:none; }
+      .cc-mi:active { background:var(--cc-chip); }
+      .cc-mhead { padding:10px 20px 4px; font-size:13px; font-weight:600; color:var(--cc-ink2); }
+      .cc-mhead + .cc-mi { border-top:none; }
+      .cc-msep { height:6px; margin:4px 0 0; background:var(--cc-line); }
+      .cc-msep + .cc-mi { border-top:none; }
+      .cc-tick { width:20px; height:20px; flex-shrink:0; box-sizing:border-box; border-radius:6px; border:2px solid var(--tk);
+        display:flex; align-items:center; justify-content:center; color:#fff; transition:background .15s; }
+      .cc-tick svg { width:13px; height:13px; opacity:0; transition:opacity .15s; }
+      .cc-mcal.is-on .cc-tick { background:var(--tk); }
+      .cc-mcal.is-on .cc-tick svg { opacity:1; }
+      .cc-mcal:not(.is-on) span { color:var(--cc-ink2); }
+      .cc-mcal.is-last { cursor:default; }
+      .cc-mcal.is-last .cc-tick { opacity:0.6; }`;
+    const menu = document.createElement('div');
+    menu.className = 'cc-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', this._config.title || 'Calendar');
+    // with more than one calendar: tick boxes to show or hide each one (the menu stays open)
+    const cals = this._cals();
+    if (cals.length > 1) {
+      const head = document.createElement('div');
+      head.className = 'cc-mhead'; head.textContent = 'Calendars';
+      menu.appendChild(head);
+      const ticks = [];
+      const paint = () => {
+        const shownCount = cals.filter(c => this._calShown(c.entity)).length;
+        ticks.forEach(({ b, c }) => {
+          const on = this._calShown(c.entity);
+          b.setAttribute('aria-checked', String(on));
+          b.classList.toggle('is-on', on);
+          b.classList.toggle('is-last', on && shownCount === 1);
+        });
+      };
+      cals.forEach(c => {
+        const p = tuneColor(c.color, this._dark);
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'cc-mi cc-mcal'; b.setAttribute('role', 'menuitemcheckbox');
+        b.style.setProperty('--tk', p.dot);
+        b.innerHTML = `<i class="cc-tick">${ICONS.check}</i><span>${esc(c.name)}</span>`;
+        b.addEventListener('click', ev => { ev.stopPropagation(); this._toggleCal(c.entity); paint(); });
+        ticks.push({ b, c });
+        menu.appendChild(b);
+      });
+      paint();
+      const sep = document.createElement('div');
+      sep.className = 'cc-msep';
+      menu.appendChild(sep);
+    }
     feats.forEach(k => {
-      const [icon, label, sub] = defs[k];
+      const [icon, label] = defs[k];
       const b = document.createElement('button');
-      b.type = 'button'; b.className = 'cc-row';
-      b.innerHTML = `${icon}<span><b>${esc(label)}</b><small>${esc(sub)}</small></span>`;
-      b.addEventListener('click', () => { this._closePopup(); setTimeout(open[k], 60); });
-      list.appendChild(b);
+      b.type = 'button'; b.className = 'cc-mi'; b.setAttribute('role', 'menuitem');
+      b.innerHTML = `${icon}<span>${esc(label)}</span>`;
+      b.addEventListener('click', ev => { ev.stopPropagation(); this._closeMenu(); open[k](); });
+      menu.appendChild(b);
     });
-    popup.appendChild(list);
+    layer.appendChild(style);
+    layer.appendChild(menu);
+    layer.addEventListener('click', ev => { if (ev.target === layer) this._closeMenu(); });
+    layer.addEventListener('contextmenu', ev => ev.preventDefault());
+    document.body.appendChild(layer);
+
+    // place it under the button, lined up with its right edge; above it if there isn't room below
+    const vw = window.innerWidth, vh = window.innerHeight, gap = 8, edge = 12;
+    const a = anchor || { left: vw - edge, right: vw - edge, top: edge, bottom: edge };
+    const mw = menu.offsetWidth;
+    const below = vh - a.bottom - gap - edge, above = a.top - gap - edge;
+    const natural = menu.scrollHeight;
+    const down = below >= Math.min(natural, 260) || below >= above;
+    const room = Math.max(120, down ? below : above);
+    menu.style.maxHeight = `${room}px`;
+    const h = Math.min(natural, room);
+    const left = Math.min(Math.max(edge, a.right - mw), vw - mw - edge);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${down ? a.bottom + gap : a.top - gap - h}px`;
+    // grow out of the corner nearest the button
+    menu.style.transformOrigin = `${Math.min(mw, Math.max(0, a.right - left - 16))}px ${down ? 0 : h}px`;
+
+    // keyboard: arrows move, Escape closes
+    const items = [...menu.querySelectorAll('.cc-mi')];
+    const onKey = ev => {
+      const i = items.indexOf(menu.ownerDocument.activeElement);
+      if (ev.key === 'Escape') { ev.preventDefault(); this._closeMenu(); return; }
+      if (ev.key === 'ArrowDown') { ev.preventDefault(); items[(i + 1) % items.length].focus(); }
+      if (ev.key === 'ArrowUp') { ev.preventDefault(); items[(i - 1 + items.length) % items.length].focus(); }
+    };
+    const onMove = ev => { if (ev?.type === 'scroll' && menu.contains(ev.target)) return; this._closeMenu(); };
+    document.addEventListener('keydown', onKey, true);
+    window.addEventListener('resize', onMove);
+    window.addEventListener('scroll', onMove, true);
+    this._menu = { layer, off: () => {
+      document.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('resize', onMove);
+      window.removeEventListener('scroll', onMove, true);
+    } };
+  }
+
+  // The ••• button shows when there's something in the menu: a tool, or calendars to show and hide
+  _hasMenu() { return this._menuItems().length > 0 || this._cals().length > 1; }
+
+  _closeMenu() {
+    if (!this._menu) return;
+    this._menu.off();
+    this._menu.layer.remove();
+    this._menu = null;
   }
 
   _announceLink(parent, text, label) {
@@ -5275,7 +5463,8 @@ class CrowCalendarCardEditor extends HTMLElement {
               ${tog('show_clashes', 'Clash badges', 'An orange “Clash” badge on events that overlap, even when they’re in different calendars. Tap it to see how they overlap')}
               ${tog('show_location', 'Place', 'Shows the event’s address or place')}
               ${tog('show_description', 'Notes', 'Shows the first two lines of each event’s notes on the card')}
-              ${tog('show_join', 'Online meetings', 'A green Join button for online meeting links, with the meeting ID and passcode shown separately and easy to copy')}
+              ${tog('show_join', 'Online meetings', 'Spots online meeting links and shows the meeting ID and passcode separately and easy to copy, with Join online meeting in the event details')}
+              ${tog('show_join_button', 'Join button on the card', 'The green Join button on each online meeting, in every view. Turn off to keep the card tidy; you can still join from the event details')}
             </div>
           </div>
         </div>
@@ -5688,7 +5877,7 @@ class CrowCalendarCardEditor extends HTMLElement {
     ['show_week_numbers', 'show_past_events', 'show_empty_days', 'filter_duplicates',
       'show_description', 'show_search_bar'].forEach(k => chk(k, cfg[k] === true));
     ['show_time', 'show_end_time', 'show_countdown', 'show_progress', 'show_location',
-      'show_add_button', 'show_search', 'show_export', 'show_join',
+      'show_add_button', 'show_search', 'show_export', 'show_join', 'show_join_button',
       'show_date', 'show_week_ahead', 'show_directions', 'show_clashes', 'event_panels',
       'show_nav', 'show_free_slots', 'show_duplicate', 'show_big_date', 'show_send_message', 'show_countdowns', 'show_clash_list'].forEach(k => chk(k, cfg[k] !== false));
     set('tts_entity', cfg.tts_entity || '');
@@ -5732,6 +5921,7 @@ class CrowCalendarCardEditor extends HTMLElement {
       const off = fillOff && b.dataset.height === 'fill';
       b.disabled = off; b.style.opacity = off ? '0.4' : ''; b.style.pointerEvents = off ? 'none' : '';
     });
+    const jbRow = root.getElementById('show_join_button')?.closest('.toggle-item'); if (jbRow) jbRow.style.display = cfg.show_join !== false ? '' : 'none';
     const fillNote = root.getElementById('fill_note'); if (fillNote) fillNote.hidden = !fillOff;
     const mhRow = root.getElementById('max_height_row'); if (mhRow) mhRow.style.display = fill ? 'none' : '';
     root.querySelectorAll('[data-time]').forEach(b => b.classList.toggle('is-selected', b.dataset.time === (cfg.time_format || 'auto')));
@@ -5786,7 +5976,7 @@ class CrowCalendarCardEditor extends HTMLElement {
 
     ['show_title', 'show_week_numbers', 'show_past_events', 'show_empty_days', 'filter_duplicates',
       'show_time', 'show_end_time', 'show_countdown', 'show_progress', 'show_location', 'show_description',
-      'show_add_button', 'show_search', 'show_export', 'show_join', 'show_weather',
+      'show_add_button', 'show_search', 'show_export', 'show_join', 'show_join_button', 'show_weather',
       'show_date', 'show_week_ahead', 'show_directions', 'show_clashes', 'event_panels',
       'show_nav', 'show_free_slots', 'show_duplicate', 'show_search_bar', 'show_big_date', 'show_send_message', 'show_countdowns', 'show_clash_list']
       .forEach(id => $(id).addEventListener('change', e => this._set(id, e.target.checked)));

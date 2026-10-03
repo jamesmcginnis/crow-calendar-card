@@ -23,7 +23,7 @@ A calendar card for [Home Assistant](https://www.home-assistant.io/) that brings
 - **Times** in 12-hour, 24-hour or your Home Assistant setting, with or without the finish time.
 - **Starts-in badge**, such as "in 25m", and a **Now** badge with a live progress bar while an event is on.
 - **Clash badges** on events that overlap, even when they're in different calendars. Tap one to see how they overlap.
-- **Online meetings**: a green **Join** button for meeting links, with the meeting ID and passcode shown separately with copy buttons.
+- **Online meetings**: a green **Join** button for meeting links, with the meeting ID and passcode shown separately with copy buttons. The Join button on the card can be turned off, so you only join from the event details.
 - **Place and notes** on the card.
 - **Remove duplicates** when the same event is in more than one calendar.
 - **Show first** keeps the card short, with a "12 more events" button for the rest.
@@ -46,6 +46,7 @@ Tap an event to open its details, or set it to open a link instead, such as the 
 
 ### Menu
 Tap **•••** in the header, or press and hold the card:
+- **Calendars** (when the card has more than one): tick boxes in each calendar's colour to show or hide it. The menu stays open while you tick, the choice is remembered on that device, and a "hidden" pill on the card brings them all back.
 - **Search** finds any event by its name, place or notes, from the last month to six months ahead.
 - **Week ahead** shows the next 7 days at a glance: how many events, hours booked, the busiest and quietest days, time booked per calendar and any clashes.
 - **Countdowns** shows how many days to go until the big things coming up: all-day and multi-day events in the next six months, such as birthdays, holidays and trips. The next one is shown large, with the rest listed below. Repeating events show once.
@@ -176,7 +177,8 @@ Everything else can be set in the built-in visual editor, and every option below
 | `show_clashes` | `boolean` | `true` | Clash badges |
 | `show_location` | `boolean` | `true` | Place |
 | `show_description` | `boolean` | `false` | The first two lines of notes |
-| `show_join` | `boolean` | `true` | Join button and meeting details for online meetings |
+| `show_join` | `boolean` | `true` | Spot online meetings: meeting details and Join online meeting in event details |
+| `show_join_button` | `boolean` | `true` | The Join button on the card, in every view |
 
 ### Tapping an event
 
